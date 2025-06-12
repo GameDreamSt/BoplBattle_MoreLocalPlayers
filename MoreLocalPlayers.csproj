@@ -33,4 +33,9 @@
 		<HintPath>lib\UnityEngine.UI.dll</HintPath>
 	</Reference>
 	</ItemGroup>
+		<ItemGroup>
+	<Reference Include="Unity.InputSystem">
+		<HintPath>lib\Unity.InputSystem.dll</HintPath>
+	</Reference>
+	</ItemGroup>
 </Project>

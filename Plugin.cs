@@ -3,13 +3,14 @@ using BepInEx;
 using BepInEx.Configuration;
 using UnityEngine.SceneManagement;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using System;
 using System.Reflection;
 
 namespace MorePlayers
 {
-    [BepInPlugin("org.gamedreamst.plugins.morelocalplayers", "More Local Players", "0.0.2")]
+    [BepInPlugin("org.gamedreamst.plugins.morelocalplayers", "More Local Players", "0.0.3")]
     public class Plugin : BaseUnityPlugin
     {
         void Awake()
@@ -22,7 +23,7 @@ namespace MorePlayers
             var plugin = MorePlayersObj.AddComponent<MorePlayersPlugin>();
             plugin.amountOfPlayers = playerCountEntry.Value;
             
-            Debug.Log($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+            Debug.Log($"Plugin 'More Local Players' is loaded!");
         }
     }
 
@@ -78,7 +79,7 @@ namespace MorePlayers
 
         void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            Debug.Log($"Scene {scene.name} loaded with mode {mode}");
+            Debug.Log($"Scene {scene.name} loaded with mode {mode}\nWe have {Gamepad.all.Count} gamepads available");
 
             if (scene.name != characterSelectSceneString || amountOfPlayers <= 4)
                 return;
@@ -115,11 +116,13 @@ namespace MorePlayers
 
             Debug.Log($"Creating {amountOfPlayers - currentBoxCount} additional players");
 
+            CharacterSelectBox.deviceIds = new int[amountOfPlayers + 1]; // Controllers + Keyboard
             for (int i = currentBoxCount; i < amountOfPlayers; i++)
             {
                 var selectorBox = Instantiate(selectionBoxPrefab).GetComponent<CharacterSelectBox>();
                 selectorBox.transform.SetParent(selectHandler.transform, true);
                 selectorBox.transform.localScale = selectionBoxPrefab.transform.localScale;
+                selectorBox.RectangleIndex = i;
                 selectHandler.characterSelectBoxes[i] = selectorBox;
                 CopyAnimateOrigin(selectionBoxPrefab.gameObject, selectorBox.gameObject);
             }
