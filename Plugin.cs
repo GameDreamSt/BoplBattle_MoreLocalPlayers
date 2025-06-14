@@ -81,6 +81,12 @@ namespace MorePlayers
         {
             Debug.Log($"Scene {scene.name} loaded with mode {mode}\nWe have {Gamepad.all.Count} gamepads available");
 
+            if(scene.name.ToLower().StartsWith("level"))
+            {
+                OnGameplayLevelLoad();
+                return;
+            }
+
             if (scene.name != characterSelectSceneString || amountOfPlayers <= 4)
                 return;
 
@@ -117,6 +123,7 @@ namespace MorePlayers
             Debug.Log($"Creating {amountOfPlayers - currentBoxCount} additional players");
 
             CharacterSelectBox.deviceIds = new int[amountOfPlayers + 1]; // Controllers + Keyboard
+            CharacterSelectBox.occupiedRectangles = new bool[amountOfPlayers + 1];
             for (int i = currentBoxCount; i < amountOfPlayers; i++)
             {
                 var selectorBox = Instantiate(selectionBoxPrefab).GetComponent<CharacterSelectBox>();
@@ -133,6 +140,22 @@ namespace MorePlayers
             handlerRect.offsetMin = handlerRect.offsetMax = Vector2.zero;
 
             selectHandler.gameObject.AddComponent<HorizontalLayoutGroup>();
+        }
+
+        void OnGameplayLevelLoad()
+        {
+            if (amountOfPlayers <= 4)
+                return;
+
+            var selectHandler = FindObjectOfType<GameSessionHandler>();
+            Array.Resize(ref selectHandler.teamSpawns, amountOfPlayers);
+
+            Debug.Log($"Modifying team spawns");
+
+            for (int i = 4; i < amountOfPlayers; i++)
+            {
+                selectHandler.teamSpawns[i] = selectHandler.teamSpawns[i % 4];
+            }
         }
     }
 }
