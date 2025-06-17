@@ -57,34 +57,39 @@ namespace MorePlayers
 
             var audio = AudioManager.Get();
             StringBuilder sb = new();
-            List<Sound> soundsToAdd = new();
+            Dictionary<string, Tuple<Sound,int>> soundCounter = new();
             foreach (var sound in audio.sounds)
             {
                 string name = sound.name;
-
-                //sb.AppendLine($"Processing sound {sound.name} with clip {sound.clip.name}");
                 string lastLetter = name.Substring(name.Length - 1, 1);
-                if (!int.TryParse(lastLetter, out var number) || number != 1)
+                if (!int.TryParse(lastLetter, out var _))
                     continue;
 
-                void AddSound(string soundTag)
-                {
-                    for (int i = 4; i < amountOfPlayers; i++)
-                    {
-                        var newSound = sound;
-                        newSound.name = $"{soundTag}{i}";
-                        newSound.source = audio.gameObject.AddComponent<AudioSource>();
-                        soundsToAdd.Add(newSound);
-                        sb.AppendLine($"Added new sound {newSound.name}");
-                    }
-                }
+                string nameWithoutNumber = name.Substring(0, name.Length - 1);
 
-                if (name.StartsWith("slimeWalk"))
-                    AddSound("slimeWalk");
-                else if (name.StartsWith("slimeLand"))
-                    AddSound("slimeLand");
-                else if (name.StartsWith("slimeJump"))
-                    AddSound("slimeJump");
+                if (soundCounter.ContainsKey(nameWithoutNumber))
+                {
+                    var tuple = soundCounter[nameWithoutNumber];
+                    soundCounter[nameWithoutNumber] = new(tuple.Item1, tuple.Item2 + 1);
+                }
+                else
+                    soundCounter.Add(nameWithoutNumber, new(sound, 1));
+            }
+
+            List<Sound> soundsToAdd = new();
+            foreach (var sound in soundCounter)
+            {
+                if (sound.Value.Item2 < 4)
+                    continue;
+
+                for (int i = 4; i < amountOfPlayers; i++)
+                {
+                    var newSound = sound.Value.Item1;
+                    newSound.name = $"{sound.Key}{i}";
+                    newSound.source = audio.gameObject.AddComponent<AudioSource>();
+                    soundsToAdd.Add(newSound);
+                    sb.AppendLine($"Added new sound {newSound.name}");
+                }
             }
 
             int startIndex = audio.sounds.Length;
