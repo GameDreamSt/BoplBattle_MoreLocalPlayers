@@ -7,6 +7,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using System;
 using System.Reflection;
+using BoplFixedMath;
 
 namespace MorePlayers
 {
@@ -81,9 +82,10 @@ namespace MorePlayers
         {
             Debug.Log($"Scene {scene.name} loaded with mode {mode}\nWe have {Gamepad.all.Count} gamepads available");
 
-            if(scene.name.ToLower().StartsWith("level"))
+            var gameSessionHandler = FindObjectOfType<GameSessionHandler>();
+            if (gameSessionHandler != null)
             {
-                OnGameplayLevelLoad();
+                OnGameplayLevelLoad(gameSessionHandler);
                 return;
             }
 
@@ -142,19 +144,21 @@ namespace MorePlayers
             selectHandler.gameObject.AddComponent<HorizontalLayoutGroup>();
         }
 
-        void OnGameplayLevelLoad()
+        void OnGameplayLevelLoad(GameSessionHandler gameSessionHandler)
         {
             if (amountOfPlayers <= 4)
                 return;
 
-            var selectHandler = FindObjectOfType<GameSessionHandler>();
-            Array.Resize(ref selectHandler.teamSpawns, amountOfPlayers);
+            Array.Resize(ref gameSessionHandler.teamSpawns, amountOfPlayers);
 
             Debug.Log($"Modifying team spawns");
 
+            int randomSpawnOffset = UnityEngine.Random.Range(0, 4);
             for (int i = 4; i < amountOfPlayers; i++)
             {
-                selectHandler.teamSpawns[i] = selectHandler.teamSpawns[i % 4];
+                var spacing = gameSessionHandler.teammateSpawnSpacing;
+                var offset = new Vec2(Fix.Zero, spacing * (Fix)(i / 4) * (Fix)0.5);
+                gameSessionHandler.teamSpawns[i] = gameSessionHandler.teamSpawns[(i + randomSpawnOffset) % 4] + offset;
             }
         }
     }
