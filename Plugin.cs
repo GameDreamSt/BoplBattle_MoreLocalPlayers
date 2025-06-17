@@ -6,8 +6,10 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using System;
+using System.Text;
 using System.Reflection;
 using BoplFixedMath;
+using System.Collections.Generic;
 
 namespace MorePlayers
 {
@@ -33,6 +35,10 @@ namespace MorePlayers
         public int amountOfPlayers = 4;
         readonly string characterSelectSceneString = "CharacterSelect";
 
+        static bool audioPatched;
+
+        BindingFlags privateFieldBindingFlags = BindingFlags.Instance | BindingFlags.NonPublic;
+
         void OnEnable()
         {
             SceneManager.sceneLoaded += OnSceneLoaded;
@@ -43,13 +49,79 @@ namespace MorePlayers
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
+        void PatchAudio()
+        {
+            if (audioPatched)
+                return;
+            audioPatched = true;
+
+            var audio = AudioManager.Get();
+            StringBuilder sb = new();
+            List<Sound> soundsToAdd = new();
+            foreach (var sound in audio.sounds)
+            {
+                string name = sound.name;
+
+                //sb.AppendLine($"Processing sound {sound.name} with clip {sound.clip.name}");
+                string lastLetter = name.Substring(name.Length - 1, 1);
+                if (!int.TryParse(lastLetter, out var number) || number != 1)
+                    continue;
+
+                void AddSound(string soundTag)
+                {
+                    for (int i = 4; i < amountOfPlayers; i++)
+                    {
+                        var newSound = sound;
+                        newSound.name = $"{soundTag}{i}";
+                        newSound.source = audio.gameObject.AddComponent<AudioSource>();
+                        soundsToAdd.Add(newSound);
+                        sb.AppendLine($"Added new sound {newSound.name}");
+                    }
+                }
+
+                if (name.StartsWith("slimeWalk"))
+                    AddSound("slimeWalk");
+                else if (name.StartsWith("slimeLand"))
+                    AddSound("slimeLand");
+                else if (name.StartsWith("slimeJump"))
+                    AddSound("slimeJump");
+            }
+
+            int startIndex = audio.sounds.Length;
+            int j = 0;
+            Array.Resize(ref audio.sounds, audio.sounds.Length + soundsToAdd.Count);
+            for (int i = startIndex; i < audio.sounds.Length; i++)
+            {
+                audio.sounds[i] = soundsToAdd[j];
+                j++;
+            }
+
+            var audioType = typeof(AudioManager);
+            var timesSoundPlayedField = audioType.GetField("timesSoundPlayed", privateFieldBindingFlags);
+            var isSoundLoopingField = audioType.GetField("isSoundLooping", privateFieldBindingFlags);
+
+            var timesSoundPlayedVariable = (int[])timesSoundPlayedField.GetValue(audio);
+            var isSoundLoopingVariable = (bool[])isSoundLoopingField.GetValue(audio);
+
+            Array.Resize(ref timesSoundPlayedVariable, audio.sounds.Length);
+            Array.Resize(ref isSoundLoopingVariable, audio.sounds.Length);
+
+            timesSoundPlayedField.SetValue(audio, timesSoundPlayedVariable);
+            isSoundLoopingField.SetValue(audio, isSoundLoopingVariable);
+
+            audio.ReInitializeSfx();
+
+            sb.AppendLine($"Started with {startIndex} sounds, now we have {audio.sounds.Length}");
+            Debug.Log(sb.ToString());
+        }
+
         void CopyAnimateOrigin(GameObject fromObject, GameObject toObject)
         {
             var fromList = fromObject.GetComponentsInChildren<AnimateInOutUI>();
             var toList = toObject.GetComponentsInChildren<AnimateInOutUI>();
 
             var classType = typeof(AnimateInOutUI);
-            var originalHeightField = classType.GetField("originalHeights", BindingFlags.Instance | BindingFlags.NonPublic);
+            var originalHeightField = classType.GetField("originalHeights", privateFieldBindingFlags);
             for (int i = 0; i < fromList.Length; i++)
             {
                 var from = fromList[i];
@@ -82,6 +154,8 @@ namespace MorePlayers
         {
             Debug.Log($"Scene {scene.name} loaded with mode {mode}\nWe have {Gamepad.all.Count} gamepads available");
 
+            PatchAudio();
+
             var gameSessionHandler = FindObjectOfType<GameSessionHandler>();
             if (gameSessionHandler != null)
             {
@@ -94,7 +168,7 @@ namespace MorePlayers
 
             var selectHandler = FindObjectOfType<CharacterSelectHandler>();
             var handlerType = typeof(CharacterSelectHandler);
-            var animateOutDelaysField = handlerType.GetField("animateOutDelays", BindingFlags.Instance | BindingFlags.NonPublic);
+            var animateOutDelaysField = handlerType.GetField("animateOutDelays", privateFieldBindingFlags);
             var delays = (float[])animateOutDelaysField.GetValue(selectHandler);
             Array.Resize(ref delays, amountOfPlayers);
             animateOutDelaysField.SetValue(selectHandler, delays);
