@@ -35,8 +35,6 @@ namespace MorePlayers
         public int amountOfPlayers = 4;
         readonly string characterSelectSceneString = "CharacterSelect";
 
-        static bool audioPatched;
-
         BindingFlags privateFieldBindingFlags = BindingFlags.Instance | BindingFlags.NonPublic;
 
         void OnEnable()
@@ -51,10 +49,6 @@ namespace MorePlayers
 
         void PatchAudio()
         {
-            if (audioPatched)
-                return;
-            audioPatched = true;
-
             var audio = AudioManager.Get();
             StringBuilder sb = new();
             Dictionary<string, Tuple<Sound,int>> soundCounter = new();
@@ -82,7 +76,7 @@ namespace MorePlayers
                 if (sound.Value.Item2 < 4)
                     continue;
 
-                for (int i = 4; i < amountOfPlayers; i++)
+                for (int i = 4; i < amountOfPlayers + 1; i++) // Controllers + Keyboard
                 {
                     var newSound = sound.Value.Item1;
                     newSound.name = $"{sound.Key}{i}";
@@ -159,8 +153,6 @@ namespace MorePlayers
         {
             Debug.Log($"Scene {scene.name} loaded with mode {mode}\nWe have {Gamepad.all.Count} gamepads available");
 
-            PatchAudio();
-
             var gameSessionHandler = FindObjectOfType<GameSessionHandler>();
             if (gameSessionHandler != null)
             {
@@ -227,6 +219,8 @@ namespace MorePlayers
         {
             if (amountOfPlayers <= 4)
                 return;
+
+            PatchAudio();
 
             Array.Resize(ref gameSessionHandler.teamSpawns, amountOfPlayers);
 
